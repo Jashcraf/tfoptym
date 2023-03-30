@@ -17,6 +17,12 @@ class BackendShim:
 _np = np
 np = BackendShim(np)
 
+def set_backend_to_numpy():
+    """Convenience method to automatically configure tfoptym's backend to cupy."""
+    import numpy as cp
+    np._srcmodule = cp
+    return
+
 def set_backend_to_cupy():
     """Convenience method to automatically configure tfoptym's backend to cupy."""
     import cupy as cp
