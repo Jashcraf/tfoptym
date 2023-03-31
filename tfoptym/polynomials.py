@@ -17,7 +17,7 @@ def gen_positive_polynomial_basis(nterms=3,npix=256,center=[0,0]):
     """
 
     # configure positions from 0 to 1
-    x = np.linspace(-1,1,npix)
+    x = np.linspace(-1,1,npix,dtype=np.complex128)
     x,y = np.meshgrid(x,x)
     x = x-center[0]
     y = y-center[1]

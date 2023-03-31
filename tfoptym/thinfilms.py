@@ -100,7 +100,7 @@ def compute_thin_films_macleod(stack, aoi, wavelength, ambient_index=1, substrat
 def compute_thin_films_byu(stack, aoi, wavelength, ambient_index=1, substrate_index=1.5, polarization='s'):
 
     # Consider the incident media
-    system_matrix = np.array([[1, 0], [0, 1]], dtype=np.complex128)
+    system_matrix = np.zeros([[1,0],[0,1]], dtype=np.complex128)
 
     # Consider the terminating media
     aor = np.arcsin(ambient_index/substrate_index*np.sin(aoi))
@@ -149,6 +149,70 @@ def compute_thin_films_byu(stack, aoi, wavelength, ambient_index=1, substrate_in
                                 [substrate_index*np.cos(aor),  0]])
     
     if back_matrix.ndim > 2:
+        back_matrix = np.moveaxis(back_matrix,-1,0)
+
+    characteristic_matrix = coeff * (front_matrix @ system_matrix @ back_matrix)
+
+    ttot = 1/characteristic_matrix[..., 0, 0]
+    rtot = characteristic_matrix[..., 1, 0]/characteristic_matrix[..., 0, 0]
+
+    return rtot, ttot
+
+def compute_thin_films_broadcasted(stack, aoi, wavelength, ambient_index=1, substrate_index=1.5, polarization='s'):
+
+    # Consider the incident media
+    system_matrix = np.array([[1, 0], [0, 1]], dtype=np.complex128)
+    system_matrix = np.broadcast_to(system_matrix,[stack[0][1].shape[0],stack[0][1].shape[1],2,2])
+
+    # Consider the terminating media
+    aor = np.arcsin(ambient_index/substrate_index*np.sin(aoi))
+    cosAOI = np.cos(aoi)
+    sinAOI = np.sin(aoi)
+    ncosAOI = ambient_index * cosAOI
+
+    for layer in stack:
+
+        ni = layer[0]
+        di = layer[1] # has some dimension
+
+        angle_in_film = np.arcsin(ambient_index/ni*sinAOI)
+
+        Beta = 2 * np.pi * ni * di * np.cos(angle_in_film) / wavelength
+
+        cosB = np.full_like(di,np.cos(Beta))
+        sinB = np.full_like(di,np.sin(Beta))
+        cosT = np.full_like(di,np.cos(angle_in_film))
+
+        if polarization == 'p':
+            newfilm = np.array([[cosB, -1j*sinB*cosT/ni],
+                                [-1j*ni*sinB/cosT, cosB]])
+
+        elif polarization == 's':
+            newfilm = np.array([[cosB, -1j*sinB/(cosT* ni)],
+                                [-1j*ni*sinB*cosT, cosB]])
+        if newfilm.ndim > 2: 
+            newfilm = np.moveaxis(newfilm, -1, 0)
+            newfilm = np.moveaxis(newfilm, -1, 0)
+
+        system_matrix = system_matrix @ newfilm
+
+    # Final matrix
+    coeff = 1/(2*ncosAOI)
+
+    if polarization == 'p':
+        front_matrix = np.array([[ambient_index, cosAOI],
+                                 [ambient_index, -cosAOI]])
+        back_matrix = np.array([[np.cos(aor),  0],
+                                [substrate_index, 0]])
+
+    elif polarization == 's':
+        front_matrix = np.array([[ncosAOI, 1],
+                                 [ncosAOI, -1]])
+        back_matrix = np.array([[1,  0],
+                                [substrate_index*np.cos(aor),  0]])
+    
+    if back_matrix.ndim > 2:
+        back_matrix = np.moveaxis(back_matrix,-1,0)
         back_matrix = np.moveaxis(back_matrix,-1,0)
 
     characteristic_matrix = coeff * (front_matrix @ system_matrix @ back_matrix)
