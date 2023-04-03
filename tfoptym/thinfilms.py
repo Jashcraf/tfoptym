@@ -355,3 +355,68 @@ def compute_total_jones(jones_osys,jones_thinfilm,jones_osys_after=None):
     return jones_osys_after @ jones_thinfilm @ jones_osys
   else:
     return jones_thinfilm @ jones_osys
+  
+
+def c_plate_retardance(aoi,no,ne,wvl,d):
+    """generates the retardance profile of a C-plate w/o dispersion accomodation
+
+    Parameters
+    ----------
+    aoi : float, radians
+        angle of incidence on the c-plate thin film
+    no : float 
+        ordinary refractive index
+    ne : float
+        extraordinary refractive index
+    wvl : float
+        wavelength of light
+    d : float
+        film thickness
+
+    Returns
+    -------
+    retardance
+        phase delay between s- and p-polarizations
+    """
+
+    phase_thickness = 2*np.pi/wvl * d * no
+    sint2 = np.sin(aoi) * np.sin(aoi)
+    ordinary = np.sqrt(1- (sint2/(no * no)))
+    extraordinary = np.sqrt(1- (sint2/(ne * ne)))
+    retardance = phase_thickness * (ordinary - extraordinary)
+
+    return retardance
+
+def c_plate_jones(aoi,no,ne,wvl,d):
+    """generates the retardance profile of a C-plate w/o dispersion accomodation
+
+    Parameters
+    ----------
+    aoi : float, radians
+        angle of incidence on the c-plate thin film
+    no : float 
+        ordinary refractive index
+    ne : float
+        extraordinary refractive index
+    wvl : float
+        wavelength of light
+    d : float
+        film thickness
+
+    Returns
+    -------
+    c_jones : ndarray
+    """
+    retardance = c_plate_retardance(aoi,no,ne,wvl,d)
+
+    c_jones = np.asarray([[np.exp(1j*retardance/2),np.full_like(d,0)],
+                          [np.full_like(d,0),np.exp(-1j*retardance/2)]])
+    
+    if c_jones.ndim > 2:
+        c_jones = np.moveaxis(c_jones,-1,0)
+        c_jones = np.moveaxis(c_jones,-1,0)
+        
+    return c_jones
+
+
+
